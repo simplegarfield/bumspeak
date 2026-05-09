@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>BumSpeak</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-base:#0d0d10;--bg-sidebar:#111116;--bg-main:#16161d;--bg-input:#1e1e28;
+  --bg-hover:#1f1f2a;--bg-active:#252535;--bg-msg-hover:#1a1a24;
+  --border:#2a2a38;--accent:#7c6af7;--accent-glow:rgba(124,106,247,0.18);
+  --accent-text:#b8afff;--text-primary:#e8e8f0;--text-secondary:#9898b0;
+  --text-muted:#5a5a72;--danger:#e05c6a;--online:#4ade80;--offline:#5a5a72;
+  --radius:10px;--radius-sm:6px;--font-ui:'DM Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;font-family:var(--font-ui);background:var(--bg-base);color:var(--text-primary);overflow:hidden}
+
+/* SETUP */
+#setup{position:fixed;inset:0;z-index:999;background:var(--bg-base);display:flex;align-items:center;justify-content:center}
+#setup.hidden{display:none}
+.card{background:var(--bg-sidebar);border:1px solid var(--border);border-radius:20px;padding:40px 44px;width:420px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,.6);animation:slideUp .35s cubic-bezier(.16,1,.3,1)}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.setup-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.setup-logo img{width:46px;height:46px;border-radius:50%;object-fit:cover}
+.setup-logo span{font-size:22px;font-weight:600;background:linear-gradient(135deg,#e8e8f0,var(--accent-text));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.card h2{font-size:18px;font-weight:600;margin-bottom:6px}
+.card p{font-size:13.5px;color:var(--text-secondary);margin-bottom:22px;line-height:1.55}
+.card p span{color:var(--accent-text);font-weight:500}
+.inp{width:100%;padding:12px 14px;background:var(--bg-input);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;transition:border-color .2s,box-shadow .2s;outline:none;margin-bottom:12px}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.inp::placeholder{color:var(--text-muted)}
+.err{font-size:12.5px;color:var(--danger);min-height:18px;margin-bottom:14px}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;border-radius:var(--radius);color:#fff;font-family:var(--font-ui);font-size:14.5px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(124,106,247,.35);transition:opacity .15s,transform .1s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* APP LAYOUT */
+#app{display:flex;height:100vh}
+#app.hidden{display:none}
+
+/* LEFT SIDEBAR */
+.sidebar{width:220px;min-width:220px;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-header{padding:0 16px;height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-header img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.sidebar-header span{font-size:15px;font-weight:600;background:linear-gradient(135deg,#e8e8f0,var(--accent-text));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.section{padding:16px 8px 4px}
+.section-lbl{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:0 8px;margin-bottom:4px;text-align:left}
+.ch-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;color:var(--text-secondary);font-size:14px;user-select:none}
+.ch-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.ch-item.active{background:var(--bg-active);color:var(--text-primary);font-weight:500}
+.s-footer{margin-top:auto;padding:10px;border-top:1px solid var(--border)}
+.user-badge{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg-hover);cursor:pointer;transition:background .15s;position:relative}
+.user-badge:hover{background:var(--bg-active)}
+.user-badge:hover .edit-hint{opacity:1}
+.edit-hint{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text-secondary);white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
+.u-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.u-info{overflow:hidden;flex:1}
+.u-nick{font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-status{font-size:11px;color:var(--online)}
+.edit-icon{font-size:14px;color:var(--text-muted);flex-shrink:0}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;background:var(--bg-main);overflow:hidden;min-width:0}
+.ch-header{padding:0 20px;height:52px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ch-header-name{font-size:15px;font-weight:600}
+.ch-header-desc{font-size:13px;color:var(--text-muted);border-left:1.5px solid var(--border);padding-left:10px;margin-left:4px}
+
+/* MESSAGES */
+.msgs{flex:1;overflow-y:auto;padding:16px 0 4px;display:flex;flex-direction:column}
+.msgs::-webkit-scrollbar{width:6px}
+.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.mgroup{display:flex;gap:12px;padding:2px 20px;border-radius:4px;transition:background .1s;position:relative}
+.mgroup:hover{background:var(--bg-msg-hover)}
+.mgroup.wh{margin-top:10px}.mgroup.wh:first-child{margin-top:0}
+
+.mgroup-avatar{flex-shrink:0;width:42px}
+.mgroup-avatar img{width:42px;height:42px;border-radius:50%;object-fit:cover;cursor:pointer;transition:opacity .15s}
+.mgroup-avatar img:hover{opacity:.85}
+.mgroup-avatar .av-spacer{width:42px;height:16px}
+
+.mgroup-body{flex:1;min-width:0}
+.mhead{display:flex;align-items:center;gap:0;margin-bottom:2px}
+.mnick{font-size:13.5px;font-weight:600;color:var(--accent-text);margin-right:5px}
+.mdate{font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);margin-left:2px}
+.mcontent{font-size:13.5px;line-height:1.5;color:var(--text-primary);word-break:break-word;white-space:pre-wrap}
+.mcontent a{color:var(--accent-text);text-decoration:none}
+.mcontent a:hover{text-decoration:underline}
+.mcontent.deleted{color:var(--text-muted);font-style:italic}
+
+.msys{padding:6px 20px;font-size:12px;color:var(--text-muted);font-style:italic}
+.ddiv{display:flex;align-items:center;gap:12px;padding:12px 20px}
+.ddiv::before,.ddiv::after{content:'';flex:1;height:1px;background:var(--border)}
+.ddiv span{font-size:11.5px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+
+/* TYPING */
+#typing{padding:4px 20px 2px;font-size:12px;color:var(--text-muted);min-height:20px;flex-shrink:0}
+.tdots{display:inline-flex;gap:3px;margin-right:4px}
+.tdots span{width:4px;height:4px;background:var(--text-muted);border-radius:50%;animation:bounce .9s infinite}
+.tdots span:nth-child(2){animation-delay:.15s}
+.tdots span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+
+/* INPUT */
+.input-area{padding:0 20px 16px;flex-shrink:0}
+.input-box{display:flex;align-items:flex-end;gap:10px;background:var(--bg-input);border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;transition:border-color .2s,box-shadow .2s}
+.input-box:focus-within{border-color:rgba(124,106,247,.4);box-shadow:0 0 0 3px var(--accent-glow)}
+#msginput{flex:1;background:transparent;border:none;outline:none;color:var(--text-primary);font-family:var(--font-ui);font-size:14px;resize:none;line-height:1.5;max-height:140px;overflow-y:auto}
+#msginput::placeholder{color:var(--text-muted)}
+.send-btn{background:var(--accent);border:none;border-radius:8px;padding:8px 14px;color:#fff;cursor:pointer;display:flex;align-items:center;font-family:var(--font-ui);font-weight:500;transition:background .15s,transform .1s;flex-shrink:0}
+.send-btn:hover{background:#9181f8}
+.send-btn:active{transform:scale(.96)}
+.send-btn svg{width:15px;height:15px}
+.ccnt{font-size:11px;color:var(--text-muted);text-align:right;margin-top:4px;font-family:var(--font-mono)}
+.ccnt.warn{color:var(--danger)}
+
+/* RIGHT SIDEBAR - MEMBERS */
+.members{width:220px;min-width:220px;background:var(--bg-sidebar);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.members::-webkit-scrollbar{width:4px}
+.members::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.members-header{padding:0 16px;height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center}
+.members-header span{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+.members-section-lbl{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;padding:16px 16px 6px}
+.member-item{display:flex;align-items:center;gap:10px;padding:6px 16px;border-radius:var(--radius-sm);margin:1px 8px;cursor:default;transition:background .15s,opacity .15s}
+.member-item:hover{background:var(--bg-hover)}
+.member-av-wrap{position:relative;flex-shrink:0}
+.member-av-wrap img{width:34px;height:34px;border-radius:50%;object-fit:cover}
+.member-status-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--bg-sidebar)}
+.member-status-dot.online{background:var(--online)}
+.member-status-dot.offline{background:var(--offline)}
+.member-nick{font-size:13.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.45}
+.member-nick.online{color:var(--text-primary);opacity:1}
+
+
+
+/* AVATAR MODAL */
+#av-modal{position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+#av-modal.show{display:flex}
+.av-modal-card{background:var(--bg-sidebar);border:1px solid var(--border);border-radius:16px;padding:32px;width:380px;max-width:95vw;animation:slideUp .25s ease}
+.av-modal-card h3{font-size:16px;font-weight:600;margin-bottom:6px}
+.av-modal-card p{font-size:13px;color:var(--text-secondary);margin-bottom:20px}
+.av-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);display:block;margin:0 auto 20px}
+.av-options{display:flex;gap:8px;margin-bottom:16px}
+.av-opt{flex:1;padding:10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-primary);font-size:13px;cursor:pointer;text-align:center;transition:border-color .2s}
+.av-opt:hover{border-color:var(--accent);color:var(--accent-text)}
+.av-url-input{width:100%;padding:10px 12px;background:var(--bg-input);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:var(--font-mono);font-size:12px;outline:none;margin-bottom:12px;transition:border-color .2s}
+.av-url-input:focus{border-color:var(--accent)}
+.av-url-input::placeholder{color:var(--text-muted)}
+.av-btns{display:flex;gap:8px}
+.av-cancel{flex:1;padding:10px;background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-secondary);font-size:14px;cursor:pointer;transition:background .15s}
+.av-cancel:hover{background:var(--bg-active)}
+.av-save{flex:1;padding:10px;background:var(--accent);border:none;border-radius:var(--radius-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.av-save:hover{opacity:.9}
+
+/* SCROLL BTN */
+/* LIGHTBOX */
+#lightbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#lightbox.show{display:flex}
+#lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:10px;box-shadow:0 24px 80px rgba(0,0,0,.8);cursor:default}
+
+.scbtn{position:fixed;bottom:90px;right:240px;background:var(--accent);border:none;border-radius:50%;width:36px;height:36px;color:#fff;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:16px;z-index:100}
+.scbtn.visible{display:flex}
+
+/* ADMIN */
+.nick-admin{color:#ff4d6d!important}
+.admin-badge{font-size:11px;margin-right:5px;line-height:1}
+.member-admin-badge{font-size:11px;margin-left:3px;display:inline}
+
+/* ATTACHMENTS */
+.attach-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px 6px;border-radius:6px;font-size:18px;transition:color .15s,background .15s;flex-shrink:0;line-height:1}
+.attach-btn:hover{color:var(--accent-text);background:var(--bg-hover)}
+.attach-preview-wrap{display:none;align-items:center;gap:10px;padding:8px 14px 0;margin-bottom:4px}
+.attach-preview-wrap.show{display:flex}
+.attach-thumb{max-height:80px;max-width:200px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
+.attach-remove{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1;padding:2px}
+.attach-remove:hover{color:var(--danger)}
+.msg-img{display:block;max-width:360px;max-height:280px;border-radius:8px;margin-top:6px;cursor:pointer;transition:opacity .15s;border:1px solid var(--border)}
+.msg-img:hover{opacity:.9}
+.msg-file{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--accent-text);text-decoration:none;font-size:13px}
+.msg-file:hover{border-color:var(--accent)}
+.upload-progress{font-size:12px;color:var(--text-muted);padding:2px 0}
+
+/* DM sidebar items */
+.sidebar-section-lbl{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:10px 18px 4px}
+.dm-item{display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;color:var(--text-secondary);font-size:13.5px;user-select:none;position:relative}
+.dm-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.dm-item.active{background:var(--bg-active);color:var(--text-primary);font-weight:500}
+.dm-item img{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.dm-unread{position:absolute;right:10px;width:8px;height:8px;background:var(--accent);border-radius:50%;display:none}
+.dm-unread.show{display:block}
+.ch-item-wrap{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .15s;color:var(--text-secondary);font-size:14px;user-select:none}
+.ch-item-wrap:hover{background:var(--bg-hover);color:var(--text-primary)}
+.ch-item-wrap.active{background:var(--bg-active);color:var(--text-primary);font-weight:500}
+
+/* MEMBER CONTEXT MENU */
+#member-ctx{position:fixed;z-index:9000;background:#1a1a26;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;min-width:170px}
+#member-ctx.show{display:block}
+.member-ctx-nick{padding:6px 14px;font-size:12px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);margin-bottom:4px}
+.mctx-item{padding:8px 14px;border-radius:4px;cursor:pointer;font-size:13.5px;display:flex;align-items:center;gap:8px;transition:background .1s;color:var(--text-primary)}
+.mctx-item:hover{background:var(--bg-hover)}
+.mctx-item.danger{color:var(--danger)}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:768px){.members{display:none}.scbtn{right:16px}}
+@media(max-width:500px){.sidebar{display:none}}
+</style>
+</head>
+<body>
+
+<!-- SETUP: tylko nick -->
+<div id="setup">
+  <div class="card" id="step-nick">
+    <div class="setup-logo">
+      <span>BumSpeak</span>
+    </div>
+    <h2>Wybierz swój nick</h2>
+    <p>Ustawiasz go <span>raz na zawsze</span> – nie można zmienić.</p>
+    <input class="inp" id="nickinput" maxlength="24" placeholder="np. BumMaster99" autocomplete="off" spellcheck="false"/>
+    <div class="err" id="nickerr"></div>
+    <button class="btn" id="nickbtn">Wchodzę →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span>BumSpeak</span>
+    </div>
+    <div class="section">
+      <div class="section-lbl">Kanały</div>
+      <div class="ch-item-wrap active" id="ch-global" onclick="switchToGlobal()">
+        <span>🌐</span><span>Global Chat</span>
+      </div>
+    </div>
+    <div class="section" id="dm-section" style="display:none">
+      <div class="sidebar-section-lbl">Wiadomości prywatne</div>
+      <div id="dm-list"></div>
+    </div>
+    <div class="s-footer">
+      <div class="user-badge" id="user-badge" title="Zmień avatar">
+        <div class="edit-hint">Kliknij aby zmienić avatar</div>
+        <img class="u-avatar" id="selfavatar" src="" alt=""/>
+        <div class="u-info">
+          <div class="u-nick" id="selfnick"></div>
+          <div class="u-status">● Online</div>
+        </div>
+        <span class="edit-icon">✏️</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CHAT -->
+  <div class="main">
+    <div class="ch-header">
+      <span class="ch-header-name" id="ch-header-name">🌐 Global Chat</span>
+      <span class="ch-header-desc" id="ch-header-desc">Gadaj o wszystkim</span>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div id="typing"></div>
+    <div class="input-area">
+      <div class="attach-preview-wrap" id="attach-preview-wrap">
+        <img class="attach-thumb" id="attach-thumb" src="" alt=""/>
+        <button class="attach-remove" id="attach-remove" title="Usuń">✕</button>
+        <span class="upload-progress" id="upload-progress"></span>
+      </div>
+      <div class="input-box">
+        <button class="attach-btn" id="attach-btn" title="Dodaj plik/GIF">📎</button>
+        <input type="file" id="attach-file" accept="image/*,video/mp4,.gif" style="display:none"/>
+        <textarea id="msginput" rows="1" placeholder="Wpisz wiadomość…" maxlength="2000"></textarea>
+        <button class="send-btn" id="sendbtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="ccnt" id="ccnt">0 / 2000</div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR - MEMBERS -->
+  <div class="members" id="members-panel">
+    <div class="members-header"><span>Członkowie</span></div>
+    <div class="members-section-lbl" id="online-lbl">Online — 0</div>
+    <div id="online-list"></div>
+    <div class="members-section-lbl" id="offline-lbl" style="display:none">Offline</div>
+    <div id="offline-list"></div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU REMOVED -->
+
+<!-- MEMBER CONTEXT MENU -->
+<div id="member-ctx">
+  <div class="member-ctx-nick" id="mctx-nick"></div>
+  <div class="mctx-item" id="mctx-dm">💬 Napisz prywatnie</div>
+  <div class="mctx-item" id="mctx-admin">🛠️ Nadaj admina</div>
+</div>
+
+<!-- AVATAR MODAL -->
+<div id="av-modal">
+  <div class="av-modal-card">
+    <h3>Zmień avatar</h3>
+    <p>Wklej link do zdjęcia lub wgraj plik z dysku</p>
+    <img class="av-preview" id="av-preview" src="" alt="podgląd"/>
+    <div class="av-options">
+      <div class="av-opt" id="av-upload-btn">📁 Z dysku</div>
+    </div>
+    <input class="av-url-input" id="av-url" placeholder="https://... (link do zdjęcia)" autocomplete="off"/>
+    <input type="file" id="av-file" accept="image/*" style="display:none"/>
+    <div class="av-btns">
+      <button class="av-cancel" id="av-cancel">Anuluj</button>
+      <button class="av-save" id="av-save">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<button class="scbtn" id="scbtn">↓</button>
+
+<div id="lightbox">
+  <img id="lightbox-img" src="" alt="podgląd"/>
+</div>
+
+<script>
+// ============================================================
+//  SUPABASE CONFIG
+// ============================================================
+const SUPABASE_URL = 'https://njttaypmpvpjmfbhpuzg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdHRheXBtcHZwam1mYmhwdXpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDI1NDQsImV4cCI6MjA5MzMxODU0NH0.qEu51fPrpDOd5ob7u2ajoklqynONv5pywNTaWJYVmhE';
+const ADMIN_NICK = 'Field';
+
+// Ustaw logo wszędzie
+
+// ============================================================
+let sb;
+let myNick    = localStorage.getItem('bs_nick');
+let myAvatar  = localStorage.getItem('bs_avatar') || '';
+let curCh     = 'global';
+let lastNick  = null, lastDate = '';
+let isAtBottom = true;
+let presenceCh = null, msgCh = null, broadcastCh = null;
+let typingMap  = new Map();
+let allUsers   = {};  // nick -> {avatar, isAdmin}
+let adminSet   = new Set(); // nicki adminów
+let pendingFile = null; // plik czekający na wysłanie
+
+function defaultAvatar(nick){
+  return 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed='+(nick||myNick||'user')+'&backgroundColor=7c6af7';
+}
+
+// ============================================================
+//  BOOT – wait for DOM + CDN
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  // Attach nick form listeners
+  document.getElementById('nickinput').addEventListener('keydown',e=>{if(e.key==='Enter')tryReg();});
+  document.getElementById('nickbtn').addEventListener('click',tryReg);
+
+  if(typeof window.supabase === 'undefined'){
+    document.getElementById('nickerr').textContent = 'Błąd: biblioteka Supabase nie załadowała się.';
+    return;
+  }
+
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) {
+    document.getElementById('nickerr').textContent = 'Błąd init Supabase: ' + e.message;
+    return;
+  }
+
+  if(!myAvatar) myAvatar = defaultAvatar();
+
+  if(myNick){
+    document.getElementById('setup').classList.add('hidden');
+    initApp();
+  } else {
+    document.getElementById('nickinput').focus();
+  }
+});
+
+// ============================================================
+//  NICK SETUP
+// ============================================================
+// Event listeners attached in DOMContentLoaded below
+
+async function tryReg(){
+  const nick = document.getElementById('nickinput').value.trim();
+  const err  = document.getElementById('nickerr');
+  const btn  = document.getElementById('nickbtn');
+  if(!nick){err.textContent='Podaj nick!';return;}
+  if(nick.length<2||nick.length>24){err.textContent='Nick: 2–24 znaki.';return;}
+  if(!/^[a-zA-Z0-9_\-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+$/.test(nick)){err.textContent='Tylko litery, cyfry, _ i -';return;}
+  btn.disabled=true; err.textContent='';
+  let checkData, checkErr;
+  try{
+    const res=await sb.from('users').select('nick').ilike('nick',nick).maybeSingle();
+    checkData=res.data; checkErr=res.error;
+  }catch(e){err.textContent='Błąd: '+e.message+' ('+e.name+')';btn.disabled=false;return;}
+  if(checkErr){err.textContent='Błąd: '+checkErr.message;btn.disabled=false;return;}
+  if(checkData){err.textContent='Nick zajęty. Wybierz inny.';btn.disabled=false;return;}
+  const av=defaultAvatar(nick);
+  const{error}=await sb.from('users').insert({nick, avatar_url: av});
+  if(error){err.textContent='Błąd rejestracji: '+error.message;btn.disabled=false;return;}
+  localStorage.setItem('bs_nick',nick);
+  localStorage.setItem('bs_avatar',av);
+  myNick=nick; myAvatar=av;
+  document.getElementById('setup').classList.add('hidden');
+  initApp();
+}
+
+// ============================================================
+//  INIT APP
+// ============================================================
+async function initApp(){
+  document.getElementById('app').classList.remove('hidden');
+  try{
+    const{data:me}=await sb.from('users').select('avatar_url').eq('nick',myNick).maybeSingle();
+    if(me?.avatar_url){myAvatar=me.avatar_url;localStorage.setItem('bs_avatar',myAvatar);}
+  }catch(e){console.warn('Avatar load failed',e);}
+  updateSelfUI();
+  await loadAllUsers();
+  // Auto-grant admin to the hardcoded admin nick
+  if(myNick.toLowerCase()===ADMIN_NICK.toLowerCase() && !isAdmin(myNick)){
+    await sb.from('users').update({is_admin:true}).eq('nick',myNick);
+    adminSet.add(myNick);
+    if(allUsers[myNick]) allUsers[myNick].isAdmin=true;
+  }
+  loadDMsFromStorage();
+  await loadMsgs('global');
+  subscribeMessages();
+  subscribePresence();
+  subscribeBroadcast();
+  // Subscribe to user changes (admin grants)
+  sb.channel('users-changes')
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'users'},p=>{
+      const u=p.new;
+      if(u.is_admin) adminSet.add(u.nick); else adminSet.delete(u.nick);
+      if(allUsers[u.nick]) allUsers[u.nick].isAdmin=!!u.is_admin;
+      refreshOnlineList();
+    })
+    .subscribe();
+}
+
+function updateSelfUI(){
+  document.getElementById('selfnick').textContent=myNick;
+  document.getElementById('selfavatar').src=myAvatar;
+}
+
+async function loadAllUsers(){
+  const{data}=await sb.from('users').select('nick,avatar_url,is_admin');
+  if(data) data.forEach(u=>{
+    allUsers[u.nick]={avatar:u.avatar_url||defaultAvatar(u.nick),isAdmin:!!u.is_admin};
+    if(u.is_admin) adminSet.add(u.nick);
+  });
+  // Renderuj wszystkich jako offline od razu po załadowaniu
+  renderMembers(new Set(onlineHeartbeats.keys()));
+}
+
+function isAdmin(nick){ return adminSet.has(nick) || nick===ADMIN_NICK; }
+
+
+
+function getAvatar(nick){
+  return allUsers[nick]?.avatar || defaultAvatar(nick);
+}
+
+// ============================================================
+//  MESSAGES
+// ============================================================
+async function loadMsgs(channel){
+  if(!channel) channel=curCh;
+  clearMsgs(); lastNick=null; lastDate='';
+  // Always fetch fresh - no cache so we never miss messages sent while offline/in DM
+  const{data,error}=await sb.from('messages').select('*').eq('channel',channel).order('created_at',{ascending:true}).limit(500);
+  if(error){appendSys('Błąd ładowania.');return;}
+  if(!data||!data.length){appendSys('Brak wiadomości. Bądź pierwszy! 👋');return;}
+  data.forEach(m=>appendMsg(m,false));
+  scrollBot(true);
+}
+
+function clearMsgs(){const el=document.getElementById('msgs');el.innerHTML='';el.dataset.lastTs='';lastNick=null;lastDate='';}
+
+function appendMsg(msg, isNew=true){
+  const c=document.getElementById('msgs');
+  const ts=new Date(msg.created_at);
+  const timeStr=ts.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  const dateStr=ts.toLocaleDateString('pl-PL',{day:'numeric',month:'long',year:'numeric'});
+  const todayStr=new Date().toLocaleDateString('pl-PL',{day:'numeric',month:'long',year:'numeric'});
+
+  if(lastDate!==dateStr){
+    const d=document.createElement('div');d.className='ddiv';
+    d.innerHTML='<span>'+(dateStr===todayStr?'Dzisiaj':dateStr)+'</span>';
+    c.appendChild(d); lastDate=dateStr; lastNick=null;
+  }
+
+  const GROUP_MS=5*60*1000;
+  const prevTs=c.dataset.lastTs?parseInt(c.dataset.lastTs):0;
+  const showH=(msg.nick!==lastNick)||(ts.getTime()-prevTs>GROUP_MS);
+
+  const av=getAvatar(msg.nick);
+
+  const g=document.createElement('div');
+  g.className='mgroup'+(showH?' wh':'');
+  g.dataset.msgid=msg.id;
+  g.dataset.nick=msg.nick;
+  g.dataset.ts=ts.getTime();
+
+  let attachHtml='';
+  if(msg.attachment_url){
+    const isImg=/\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(msg.attachment_url)||msg.attachment_url.includes('supabase');
+    if(isImg) attachHtml=`<img class="msg-img" src="${esc(msg.attachment_url)}" alt="załącznik" onclick="openLightbox('${esc(msg.attachment_url)}')"/>`;
+    else attachHtml=`<a class="msg-file" href="${esc(msg.attachment_url)}" target="_blank" rel="noopener">📎 Pobierz plik</a>`;
+  }
+  const content=msg.deleted
+    ? '<span class="mcontent deleted">🚫 Wiadomość została usunięta</span>'
+    : '<span class="mcontent">'+fmt(msg.content)+'</span>'+(attachHtml?'<div>'+attachHtml+'</div>':'');
+
+  if(showH){
+    g.innerHTML=`
+      <div class="mgroup-avatar"><img src="${esc(av)}" alt="${esc(msg.nick)}" onclick="showUserProfile('${esc(msg.nick)}')"/></div>
+      <div class="mgroup-body">
+        <div class="mhead"><span class="mnick${isAdmin(msg.nick)?' nick-admin':''}">${esc(msg.nick)}</span>${isAdmin(msg.nick)?'<span class=\"admin-badge\">🛠️</span>':''}<span class="mdate">${timeStr}</span></div>
+        ${content}
+      </div>`;
+  } else {
+    g.innerHTML=`
+      <div class="mgroup-avatar"><div class="av-spacer"></div></div>
+      <div class="mgroup-body">${content}</div>`;
+  }
+
+
+
+  c.appendChild(g);
+  lastNick=msg.nick;
+  c.dataset.lastTs=ts.getTime();
+
+  if(isNew){
+    g.style.animation='fadeIn .2s ease';
+    if(isAtBottom) requestAnimationFrame(()=>scrollBot(false));
+    else document.getElementById('scbtn').classList.add('visible');
+  }
+}
+
+function appendSys(t){
+  const e=document.createElement('div');e.className='msys';e.textContent=t;
+  document.getElementById('msgs').appendChild(e);
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(t){
+  t=esc(t);
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong></strong>');
+  t=t.replace(/\*(.+?)\*/g,'<em></em>');
+  t=t.replace(/`([^`]+)`/g,'<code style="background:rgba(124,106,247,.15);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:13px;"></code>');
+  t=t.replace(/(https?:\/\/[^\s<>"]+)/g,'<a href="" target="_blank" rel="noopener"></a>');
+  return t;
+}
+
+// ============================================================
+//  REALTIME - MESSAGES
+// ============================================================
+function subscribeMessages(){
+  if(msgCh) sb.removeChannel(msgCh);
+  msgCh=sb.channel('msgs-global')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},p=>{
+      const msg=p.new;
+      if(msg.channel===curCh){
+        const isOwn=msg.nick===myNick;
+        if(isOwn) isAtBottom=true;
+        appendMsg(msg,true);
+        clearTypUser(msg.nick);
+      } else if(msg.channel.startsWith('dm_')&&msg.channel.includes(myNick)){
+        // unread dot for DM
+        markDmUnread(msg.channel);
+}
+    })
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},p=>{
+      const el=document.querySelector(`.mgroup[data-msgid="${p.old.id}"]`);
+      if(!el) return;
+
+      const wasHeader = el.classList.contains('wh');
+      const nick = el.dataset.nick;
+      const nextEl = el.nextElementSibling;
+      const prevEl = el.previousElementSibling;
+
+      el.remove();
+
+      // CRITICAL: update lastNick to match what's now actually last in DOM
+      // so next appended message gets correct grouping
+      const allGroups = document.querySelectorAll('.mgroup');
+      if(allGroups.length === 0){
+        lastNick = null; lastDate = '';
+      } else {
+        const last = allGroups[allGroups.length - 1];
+        lastNick = last.dataset.nick || null;
+        const lastTs = last.dataset.ts ? parseInt(last.dataset.ts) : 0;
+        document.getElementById('msgs').dataset.lastTs = lastTs;
+      }
+
+      if(wasHeader && nextEl && nextEl.classList.contains('mgroup') && nextEl.dataset.nick === nick){
+        // Next message is same person but has no header - give it one
+        const msgId = nextEl.dataset.msgid;
+        // Re-fetch this message from DB to rebuild its header
+        sb.from('messages').select('*').eq('id', msgId).maybeSingle().then(({data:m})=>{
+          if(!m) return;
+          const av = getAvatar(m.nick);
+          const ts = new Date(m.created_at);
+          const timeStr = ts.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+          const body = nextEl.querySelector('.mgroup-body');
+          if(!body) return;
+          // Replace avatar spacer with real avatar
+          const avDiv = nextEl.querySelector('.mgroup-avatar');
+          if(avDiv) avDiv.innerHTML = `<img src="${esc(av)}" alt="${esc(m.nick)}" onclick="showUserProfile('${esc(m.nick)}')"/>`;
+          // Add header to body
+          const existingHead = body.querySelector('.mhead');
+          if(!existingHead){
+            const adminBadge = isAdmin(m.nick) ? '<span class="admin-badge">🛠️</span>' : '';
+            const nickCls = 'mnick'+(isAdmin(m.nick)?' nick-admin':'');
+            const head = document.createElement('div');
+            head.className = 'mhead';
+            head.innerHTML = `<span class="${nickCls}">${esc(m.nick)}</span>${adminBadge}<span class="mdate">${timeStr}</span>`;
+            body.insertBefore(head, body.firstChild);
+          }
+          nextEl.classList.add('wh');
+        });
+      }
+
+    })
+    .subscribe();
+}
+
+// ============================================================
+//  PRESENCE - ONLINE USERS
+// ============================================================
+// Heartbeat-based presence (reliable on free Supabase)
+const onlineHeartbeats=new Map(); // nick -> lastSeen timestamp
+let heartbeatInterval=null;
+
+function subscribePresence(){
+  if(presenceCh) sb.removeChannel(presenceCh);
+
+  presenceCh=sb.channel('heartbeat-global')
+    .on('broadcast',{event:'heartbeat'},({payload})=>{
+      if(payload.nick){
+        onlineHeartbeats.set(payload.nick, Date.now());
+        refreshOnlineList();
+      }
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED'){
+        sendHeartbeat();
+        // Send heartbeat every 8 seconds
+        if(heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval=setInterval(sendHeartbeat, 8000);
+        // Prune stale users every 15 seconds
+        setInterval(()=>{
+          const cutoff=Date.now()-20000;
+          for(const[nick,ts] of onlineHeartbeats){
+            if(ts<cutoff) onlineHeartbeats.delete(nick);
+          }
+          refreshOnlineList();
+        }, 15000);
+      }
+    });
+}
+
+function sendHeartbeat(){
+  if(presenceCh) presenceCh.send({type:'broadcast',event:'heartbeat',payload:{nick:myNick}});
+  onlineHeartbeats.set(myNick, Date.now());
+  refreshOnlineList();
+}
+
+function refreshOnlineList(){
+  const onlineSet = new Set(onlineHeartbeats.keys());
+  renderMembers(onlineSet);
+  renderDMList(); // update online dots in DM list too
+}
+
+function renderMembers(onlineSet){
+  const allNicks=Object.keys(allUsers);
+  const onlineList=document.getElementById('online-list');
+  const offlineList=document.getElementById('offline-list');
+  const onlineLbl=document.getElementById('online-lbl');
+  const offlineLbl=document.getElementById('offline-lbl');
+
+  const online=[...onlineSet].sort();
+  const offline=allNicks.filter(n=>!onlineSet.has(n)).sort();
+
+  onlineLbl.textContent='Online — '+online.length;
+  onlineList.innerHTML=online.map(nick=>memberHTML(nick,true)).join('');
+
+  if(offline.length>0){
+    offlineLbl.style.display='';
+    offlineList.innerHTML=offline.map(nick=>memberHTML(nick,false)).join('');
+  } else {
+    offlineLbl.style.display='none';
+    offlineList.innerHTML='';
+  }
+}
+
+function memberHTML(nick, isOnline){
+  const av=getAvatar(nick);
+  const adm=isAdmin(nick);
+  const badge=adm?'<span class="member-admin-badge">🛠️</span>':'';
+  const nickCls='member-nick'+(isOnline?' online':'')+(adm?' nick-admin':'');
+  return `<div class="member-item" data-nick="${esc(nick)}" onclick="memberClick(event,'${esc(nick)}')" style="cursor:pointer">
+    <div class="member-av-wrap">
+      <img src="${esc(av)}" alt="${esc(nick)}" style="width:34px;height:34px;border-radius:50%;object-fit:cover"/>
+      <div class="member-status-dot ${isOnline?'online':'offline'}"></div>
+    </div>
+    <span class="${nickCls}">${esc(nick)}${badge}</span>
+  </div>`;
+}
+
+function memberClick(e, nick){
+  if(nick===myNick) return; // nie klikaj na siebie
+  if(!isAdmin(myNick)) return; // tylko admin może
+  e.stopPropagation();
+  const mctx=document.getElementById('member-ctx');
+  document.getElementById('mctx-nick').textContent=nick;
+  mctx.dataset.nick=nick;
+  mctx.classList.add('show');
+  // Position to the LEFT of cursor
+  const w = mctx.offsetWidth || 170;
+  mctx.style.left = (e.clientX - w) + 'px';
+  mctx.style.top  = e.clientY + 'px';
+  const alreadyAdmin=isAdmin(nick);
+  const isProtected=nick.toLowerCase()===ADMIN_NICK.toLowerCase();
+  document.getElementById('mctx-admin').textContent=alreadyAdmin&&!isProtected?'❌ Odbierz admina':'🛠️ Nadaj admina';
+  document.getElementById('mctx-admin').style.opacity=alreadyAdmin&&isProtected?'0.4':'1';
+  document.getElementById('mctx-admin').style.cursor=alreadyAdmin&&isProtected?'default':'pointer';
+}
+
+// ============================================================
+//  BROADCAST - TYPING
+// ============================================================
+function subscribeBroadcast(){
+  if(broadcastCh) sb.removeChannel(broadcastCh);
+  broadcastCh=sb.channel('typing-global')
+    .on('broadcast',{event:'typing'},({payload})=>{
+      if(payload.nick!==myNick && payload.channel===curCh){showTypUser(payload.nick);}
+    })
+    .subscribe();
+}
+function sendTyping(){if(broadcastCh)broadcastCh.send({type:'broadcast',event:'typing',payload:{nick:myNick,channel:curCh}});}
+function showTypUser(nick){typingMap.set(nick,Date.now());renderTyp();setTimeout(()=>{typingMap.delete(nick);renderTyp();},3000);}
+function clearTypUser(nick){typingMap.delete(nick);renderTyp();}
+function renderTyp(){
+  const el=document.getElementById('typing');
+  const users=[...typingMap.keys()].filter(n=>n!==myNick);
+  if(!users.length){el.innerHTML='';return;}
+  const names=users.length<=2?users.join(' i '):users.slice(0,2).join(', ')+' i inni';
+  el.innerHTML=`<span class="tdots"><span></span><span></span><span></span></span>${esc(names)} ${users.length===1?'pisze':'piszą'}…`;
+}
+
+// ============================================================
+//  SEND MESSAGE
+// ============================================================
+const msginput=document.getElementById('msginput');
+const ccnt=document.getElementById('ccnt');
+let typingTimer=null;
+
+// Paste image (Ctrl+V)
+msginput.addEventListener('paste', e => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      pendingFile = file;
+      const wrap = document.getElementById('attach-preview-wrap');
+      const thumb = document.getElementById('attach-thumb');
+      wrap.classList.add('show');
+      document.getElementById('upload-progress').textContent = '';
+      thumb.src = URL.createObjectURL(file);
+      thumb.style.display = '';
+      break;
+    }
+  }
+});
+
+msginput.addEventListener('input',()=>{
+  msginput.style.height='auto';
+  msginput.style.height=Math.min(msginput.scrollHeight,140)+'px';
+  const l=msginput.value.length;
+  ccnt.textContent=l+' / 2000';
+  ccnt.classList.toggle('warn',l>1800);
+  sendTyping();
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>{},2500);
+});
+msginput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+document.getElementById('sendbtn').addEventListener('click',sendMsg);
+
+async function sendMsg(){
+  const content=msginput.value.trim();
+  if(!content&&!pendingFile) return;
+  if(!sb) return;
+  msginput.value='';msginput.style.height='auto';ccnt.textContent='0 / 2000';ccnt.classList.remove('warn');msginput.focus();
+  // Force scroll – own message zawsze na dole
+  isAtBottom=true;
+  scrollBot(false);
+  let attachUrl=null;
+  if(pendingFile){
+    attachUrl=await uploadFile(pendingFile);
+    pendingFile=null;
+    document.getElementById('attach-preview-wrap').classList.remove('show');
+    document.getElementById('attach-thumb').src='';
+  }
+  await sb.from('messages').insert({nick:myNick,content:content||'',channel:curCh,attachment_url:attachUrl});
+}
+
+// ============================================================
+//  DELETE MESSAGE
+// ============================================================
+
+
+// ============================================================
+//  AVATAR CHANGE
+// ============================================================
+document.getElementById('user-badge').addEventListener('click',()=>openAvModal());
+
+function openAvModal(){
+  const modal=document.getElementById('av-modal');
+  document.getElementById('av-preview').src=myAvatar;
+  document.getElementById('av-url').value='';
+  modal.classList.add('show');
+}
+function closeAvModal(){document.getElementById('av-modal').classList.remove('show');}
+
+document.getElementById('av-cancel').addEventListener('click',closeAvModal);
+document.getElementById('av-modal').addEventListener('click',e=>{if(e.target===document.getElementById('av-modal'))closeAvModal();});
+
+document.getElementById('av-upload-btn').addEventListener('click',()=>document.getElementById('av-file').click());
+
+document.getElementById('av-file').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    document.getElementById('av-preview').src=ev.target.result;
+    document.getElementById('av-url').value=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('av-url').addEventListener('input',e=>{
+  const v=e.target.value.trim();
+  if(v) document.getElementById('av-preview').src=v;
+});
+
+document.getElementById('av-save').addEventListener('click',async()=>{
+  const url=document.getElementById('av-url').value.trim();
+  if(!url){closeAvModal();return;}
+  const{error}=await sb.from('users').update({avatar_url:url}).eq('nick',myNick);
+  if(!error){
+    myAvatar=url;
+    localStorage.setItem('bs_avatar',url);
+    allUsers[myNick]={avatar:url};
+    updateSelfUI();
+    // update presence
+    if(presenceCh) presenceCh.track({nick:myNick,avatar:url,online_at:new Date().toISOString()});
+    closeAvModal();
+  }
+});
+
+// ============================================================
+//  SCROLL
+// ============================================================
+const msgsEl=document.getElementById('msgs');
+const scbtn=document.getElementById('scbtn');
+msgsEl.addEventListener('scroll',()=>{
+  isAtBottom=msgsEl.scrollHeight-msgsEl.scrollTop-msgsEl.clientHeight<60;
+  scbtn.classList.toggle('visible',!isAtBottom);
+});
+scbtn.addEventListener('click',()=>scrollBot(false));
+function scrollBot(instant=false){
+  msgsEl.scrollTo({top:msgsEl.scrollHeight,behavior:instant?'instant':'smooth'});
+  scbtn.classList.remove('visible');isAtBottom=true;
+}
+
+// User avatar click placeholder
+function showUserProfile(nick){ /* future feature */ }
+
+// ============================================================
+//  LIGHTBOX
+// ============================================================
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+
+function openLightbox(src){
+  lightboxImg.src = src;
+  lightbox.classList.add('show');
+}
+
+lightbox.addEventListener('click', e => {
+  if(e.target === lightbox) lightbox.classList.remove('show');
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') lightbox.classList.remove('show');
+});
+
+// ============================================================
+//  DM SYSTEM
+// ============================================================
+let openDMs = []; // list of {nick, channel}
+
+function dmChannel(a, b){
+  // deterministic channel name – same for both users
+  return 'dm_' + [a,b].sort().join('_');
+}
+
+function switchToGlobal(){
+  curCh = 'global';
+  lastNick = null; lastDate = '';
+  typingMap.clear(); renderTyp();
+  document.getElementById('ch-global').classList.add('active');
+  document.querySelectorAll('.dm-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('ch-header-name').textContent = '🌐 Global Chat';
+  document.getElementById('ch-header-desc').textContent = 'Gadaj o wszystkim';
+  document.getElementById('msginput').placeholder = 'Wpisz wiadomość…';
+  clearMsgs();
+  loadMsgs('global');
+}
+
+function openDM(targetNick){
+  const ch = dmChannel(myNick, targetNick);
+
+  // Add to openDMs if not already there
+  if(!openDMs.find(d=>d.nick===targetNick)){
+    openDMs.push({nick:targetNick, channel:ch});
+    renderDMList();
+    saveDMsToStorage();
+  }
+
+  // Switch to this DM
+  switchToDM(targetNick, ch);
+}
+
+function switchToDM(targetNick, ch){
+  curCh = ch;
+  lastNick = null; lastDate = '';
+  typingMap.clear(); renderTyp();
+
+  // Update sidebar active state
+  document.getElementById('ch-global').classList.remove('active');
+  document.querySelectorAll('.dm-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.nick===targetNick);
+  });
+
+  // Update header
+  const av = getAvatar(targetNick);
+  const adminBadge = isAdmin(targetNick) ? ' 🛠️' : '';
+  document.getElementById('ch-header-name').innerHTML =
+    `<img src="${esc(av)}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px"/>${esc(targetNick)}${adminBadge}`;
+  document.getElementById('ch-header-desc').textContent = 'Wiadomość prywatna';
+  document.getElementById('msginput').placeholder = `Napisz do ${targetNick}…`;
+
+  // Clear unread dot
+  const dot = document.querySelector(`.dm-item[data-nick="${targetNick}"] .dm-unread`);
+  if(dot) dot.classList.remove('show');
+
+  clearMsgs();
+  loadMsgs(ch);
+}
+
+function renderDMList(){
+  const section = document.getElementById('dm-section');
+  const list = document.getElementById('dm-list');
+  if(openDMs.length===0){ section.style.display='none'; return; }
+  section.style.display='';
+  list.innerHTML = openDMs.map(d => {
+    const av = getAvatar(d.nick);
+    const adminBadge = isAdmin(d.nick) ? '<span style="font-size:10px;margin-left:2px">🛠️</span>' : '';
+    const nickCls = isAdmin(d.nick) ? 'nick-admin' : '';
+    const isOnline = onlineHeartbeats.has(d.nick);
+    const dotCls = isOnline ? 'online' : 'offline';
+    return `<div class="dm-item" data-nick="${esc(d.nick)}" data-ch="${esc(d.channel)}" onclick="switchToDM('${esc(d.nick)}','${esc(d.channel)}')">
+      <div class="member-av-wrap" style="flex-shrink:0">
+        <img src="${esc(av)}" alt="${esc(d.nick)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover"/>
+        <div class="member-status-dot ${dotCls}" style="width:9px;height:9px"></div>
+      </div>
+      <span class="${nickCls}">${esc(d.nick)}${adminBadge}</span>
+      <span class="dm-unread" id="dm-unread-${esc(d.nick)}"></span>
+    </div>`;
+  }).join('');
+}
+
+function markDmUnread(channel){
+  // find nick from channel
+  const dm = openDMs.find(d=>d.channel===channel);
+  if(!dm) {
+    // DM we received but haven't opened yet – extract nick
+    const parts = channel.replace('dm_','').split('_');
+    const nick = parts.find(p=>p!==myNick);
+    if(nick){
+      openDMs.push({nick, channel});
+      renderDMList();
+    }
+  }
+  const nick = openDMs.find(d=>d.channel===channel)?.nick;
+  if(!nick) return;
+  const dot = document.getElementById('dm-unread-'+nick);
+  if(dot && curCh!==channel) dot.classList.add('show');
+}
+
+// ── DM button in member context menu ──────────────────────────
+document.getElementById('mctx-dm').addEventListener('click',()=>{
+  const nick = memberCtx.dataset.nick;
+  if(!nick) return;
+  memberCtx.classList.remove('show');
+  openDM(nick);
+});
+
+// Load DMs from localStorage (so they persist on reload)
+function saveDMsToStorage(){
+  localStorage.setItem('bs_dms', JSON.stringify(openDMs));
+}
+function loadDMsFromStorage(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('bs_dms')||'[]');
+    openDMs = saved.filter(d=>d.nick && d.channel);
+    renderDMList();
+  }catch(e){}
+}
+
+// Global paste listener (e.g. when user pastes without clicking textarea first)
+window.addEventListener('paste', e => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (!file) return;
+      pendingFile = file;
+      const wrap = document.getElementById('attach-preview-wrap');
+      const thumb = document.getElementById('attach-thumb');
+      wrap.classList.add('show');
+      document.getElementById('upload-progress').textContent = '';
+      thumb.src = URL.createObjectURL(file);
+      thumb.style.display = '';
+      msginput.focus();
+      break;
+    }
+  }
+});
+
+// ============================================================
+//  MEMBER CONTEXT MENU
+// ============================================================
+const memberCtx=document.getElementById('member-ctx');
+document.addEventListener('click',()=>memberCtx.classList.remove('show'));
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.getElementById('mctx-admin').addEventListener('click',async()=>{
+  const nick=memberCtx.dataset.nick;
+  if(!nick||!isAdmin(myNick)) return;
+  memberCtx.classList.remove('show');
+  const makeAdmin=!isAdmin(nick);
+  // tescik zawsze zostaje adminem – nie można zabrać
+  if(!makeAdmin && nick.toLowerCase()===ADMIN_NICK.toLowerCase()) return;
+  await sb.from('users').update({is_admin:makeAdmin}).eq('nick',nick);
+  if(makeAdmin){ adminSet.add(nick); if(allUsers[nick]) allUsers[nick].isAdmin=true; }
+  else { adminSet.delete(nick); if(allUsers[nick]) allUsers[nick].isAdmin=false; }
+  refreshOnlineList();
+});
+
+// ============================================================
+//  FILE ATTACHMENT
+// ============================================================
+document.getElementById('attach-btn').addEventListener('click',()=>document.getElementById('attach-file').click());
+
+document.getElementById('attach-file').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  pendingFile=file;
+  const wrap=document.getElementById('attach-preview-wrap');
+  const thumb=document.getElementById('attach-thumb');
+  wrap.classList.add('show');
+  document.getElementById('upload-progress').textContent='';
+  if(file.type.startsWith('image/')){
+    const url=URL.createObjectURL(file);
+    thumb.src=url; thumb.style.display='';
+  } else {
+    thumb.style.display='none';
+    document.getElementById('upload-progress').textContent='📎 '+file.name;
+  }
+  e.target.value='';
+});
+
+document.getElementById('attach-remove').addEventListener('click',()=>{
+  pendingFile=null;
+  document.getElementById('attach-preview-wrap').classList.remove('show');
+  document.getElementById('attach-thumb').src='';
+});
+
+async function uploadFile(file){
+  const ext=file.name.split('.').pop();
+  const name=Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext;
+  document.getElementById('upload-progress').textContent='Wysyłanie…';
+  const{data,error}=await sb.storage.from('attachments').upload(name,file,{cacheControl:'3600',upsert:false});
+  if(error){ document.getElementById('upload-progress').textContent='Błąd uploadu'; return null; }
+  const{data:pub}=sb.storage.from('attachments').getPublicUrl(name);
+  return pub.publicUrl;
+}
+</script>
+</body>
+</html>
