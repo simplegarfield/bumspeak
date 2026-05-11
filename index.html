@@ -54,7 +54,7 @@ html,body{height:100%;font-family:var(--font-ui);background:var(--bg-base);color
 @keyframes cardIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .setup-logo{display:flex;align-items:center;gap:11px;margin-bottom:26px}
 .setup-logo img{width:40px;height:40px;border-radius:50%;object-fit:cover}
-.setup-logo span{font-size:20px;font-weight:700;letter-spacing:-.3px;color:var(--text-primary)}
+.setup-logo span{font-size:20px;font-weight:700;letter-spacing:-.3px;background:linear-gradient(135deg,#e8e8f0,var(--accent-text));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .card h2{font-size:17px;font-weight:600;margin-bottom:5px;color:var(--text-primary)}
 .card p{font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6}
 .card p span{color:var(--accent-text);font-weight:500}
@@ -108,7 +108,8 @@ html,body{height:100%;font-family:var(--font-ui);background:var(--bg-base);color
 .sidebar-header img{width:26px;height:26px;border-radius:50%;object-fit:cover}
 .sidebar-header span{
   font-size:14.5px;font-weight:700;letter-spacing:-.2px;
-  color:var(--text-primary);
+  background:linear-gradient(135deg,#e8e8f0 0%,var(--accent-text) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
 .section{padding:14px 8px 4px}
 .section-lbl{
@@ -142,7 +143,7 @@ html,body{height:100%;font-family:var(--font-ui);background:var(--bg-base);color
 }
 .dm-item:hover{background:var(--bg-hover);color:var(--text-primary)}
 .dm-item.active{background:var(--bg-active);color:var(--text-primary);font-weight:500}
-.dm-item img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.dm-item img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;image-rendering:-webkit-optimize-contrast}
 .dm-unread{position:absolute;right:10px;width:7px;height:7px;background:var(--accent);border-radius:50%;display:none}
 .dm-unread.show{display:block}
 
@@ -188,25 +189,25 @@ html,body{height:100%;font-family:var(--font-ui);background:var(--bg-base);color
 .msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .msgs::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
 
-.mgroup{display:flex;gap:12px;padding:1px 20px;border-radius:4px;transition:background var(--transition);position:relative}
+.mgroup{display:flex;gap:11px;padding:1px 16px;border-radius:4px;transition:background var(--transition);position:relative}
 .mgroup:hover{background:var(--bg-msg-hover)}
-.mgroup.wh{margin-top:14px}
+.mgroup.wh{margin-top:10px}
 .mgroup.wh:first-child{margin-top:0}
 .mgroup.wh + .mgroup:not(.wh){margin-top:0;padding-top:0}
 
-.mgroup-avatar{flex-shrink:0;width:42px;padding-top:1px}
-.mgroup-avatar img{width:42px;height:42px;border-radius:50%;object-fit:cover;cursor:pointer;transition:opacity var(--transition);display:block}
+.mgroup-avatar{flex-shrink:0;width:38px;padding-top:1px}
+.mgroup-avatar img{width:38px;height:38px;border-radius:50%;object-fit:cover;cursor:pointer;transition:opacity var(--transition);display:block}
 .mgroup-avatar img:hover{opacity:.85}
-.mgroup-avatar .av-spacer{width:42px;height:16px}
+.mgroup-avatar .av-spacer{width:38px;height:14px}
 
-.mgroup-body{flex:1;min-width:0;padding:2px 0}
-.mhead{display:flex;align-items:baseline;gap:0;margin-bottom:3px;flex-wrap:nowrap}
+.mgroup-body{flex:1;min-width:0;padding:1px 0}
+.mhead{display:flex;align-items:baseline;gap:0;margin-bottom:1px;flex-wrap:nowrap}
 .mnick{font-size:13.5px;font-weight:600;color:var(--accent-text);margin-right:5px;cursor:default}
 .nick-admin{color:#ff4d6d!important;-webkit-text-fill-color:#ff4d6d!important}
 .admin-badge{font-size:11px;margin-right:5px;line-height:1;-webkit-text-fill-color:initial!important;background:none!important}
 .member-admin-badge{font-size:11px;margin-left:3px;-webkit-text-fill-color:initial!important;background:none!important}
 .mdate{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-left:2px}
-.mcontent{font-size:14px;line-height:1.55;color:var(--text-primary);word-break:break-word;white-space:pre-wrap}
+.mcontent{font-size:13.5px;line-height:1.45;color:var(--text-primary);word-break:break-word;white-space:pre-wrap}
 .mcontent a{color:var(--accent-text);text-decoration:none}
 .mcontent a:hover{text-decoration:underline}
 .mcontent.deleted{color:var(--text-muted);font-style:italic}
